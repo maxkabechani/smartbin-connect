@@ -4,6 +4,7 @@ import fastifyStatic from '@fastify/static';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fromNodeHeaders } from 'better-auth/node';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { auth } from './auth.js';
 import { db, pool } from './db/index.js';
 import { bins, readings, dispatchTasks } from './db/schema.js';
@@ -13,6 +14,8 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT ?? 8000);
 const apiKey = process.env.API_KEY ?? 'change-me';
 const aiUrl = process.env.AI_SERVICE_URL ?? 'http://ai-service:9000';
+
+await migrate(db, { migrationsFolder: path.join(root, '..', 'drizzle') });
 
 type Telemetry = { api_key: string; bin_id: string; fill_level: number; lid_open?: boolean; wifi_rssi?: number };
 const app = Fastify({ logger: true });
