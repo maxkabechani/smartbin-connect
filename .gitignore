@@ -16,3 +16,6 @@ ppt_build/*.png
 ppt_output/
 AI_Integrated_*.docx
 ~$*.docx
+build_report.py
+ppt_build/
+server/
