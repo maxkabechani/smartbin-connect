@@ -22,6 +22,12 @@ services:
       postgres: { condition: service_healthy }
       ai-service: { condition: service_started }
     restart: unless-stopped
+  frontend:
+    build: ./frontend
+    ports: ["80:80"]
+    depends_on:
+      - api
+    restart: unless-stopped
   ai-service:
     build: ./ai-service
     env_file: ./ai-service/.env
