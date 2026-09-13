@@ -21,18 +21,18 @@ Create the containers:
 
 ```bash
 docker compose up -d postgres
-docker compose run --rm api npm run auth:generate
-docker compose run --rm api npm run db:generate
-docker compose run --rm api npm run db:migrate
-docker compose run --rm api npm run db:seed
+docker compose run --rm api bun run auth:generate
+docker compose run --rm api bun run db:generate
+docker compose run --rm api bun run db:migrate
+docker compose run --rm api bun run db:seed
 docker compose up -d --build api ai-service
 ```
 
-The reverse proxy should forward `https://ops.inbines.com` to port `8000`. Keep PostgreSQL and the AI service private to the Docker network.
+Dokploy should expose the Next.js frontend at `https://smartbin.maxkabechani.dev` on container port `3000`. Set the frontend `API_INTERNAL_URL` to the private backend service URL. Keep PostgreSQL and the AI service private to the Docker network.
 
 ## Customer flow
 
-1. Customer creates an account at `https://ops.inbines.com`.
+1. Customer creates an account at `https://smartbin.maxkabechani.dev`.
 2. The customer signs in through Better Auth.
 3. The customer enters the bin ID and the claim code printed on the bin.
 4. The API links that bin to the authenticated Better Auth user.
@@ -43,7 +43,7 @@ The reverse proxy should forward `https://ops.inbines.com` to port `8000`. Keep 
 Use the Bluetooth configuration characteristic with:
 
 ```text
-WIFI_NAME|WIFI_PASSWORD|BIN-01|https://ops.inbines.com
+WIFI_NAME|WIFI_PASSWORD|BIN-01|https://smartbin.maxkabechani.dev
 ```
 
 The firmware sends telemetry to `/api/telemetry` using the device API key. Customer sessions are never stored on the ESP32.

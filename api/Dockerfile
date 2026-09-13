@@ -1,15 +1,15 @@
-FROM node:22-bookworm-slim AS build
+FROM oven/bun:1-alpine AS build
 WORKDIR /app
-COPY package*.json ./
-RUN npm install
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 COPY tsconfig.json drizzle.config.ts ./
 COPY src ./src
-RUN npm run build
-FROM node:22-bookworm-slim
+RUN bun run build
+FROM oven/bun:1-alpine
 WORKDIR /app
-COPY --from=build /app/package*.json ./
-RUN npm install
+COPY --from=build /app/package.json /app/bun.lock ./
+RUN bun install --frozen-lockfile --production
 COPY --from=build /app/dist ./dist
 COPY public ./public
 EXPOSE 8000
-CMD ["node", "dist/server.js"]
+CMD ["bun", "dist/server.js"]

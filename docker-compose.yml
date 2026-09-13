@@ -5,7 +5,7 @@ services:
       POSTGRES_DB: smartbin
       POSTGRES_USER: smartbin
       POSTGRES_PASSWORD: change-this-password
-    volumes: [postgres-data:/var/lib/postgresql/data]
+    volumes: [postgres-data:/var/lib/postgresql/18/docker]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U smartbin -d smartbin"]
       interval: 5s
@@ -24,7 +24,9 @@ services:
     restart: unless-stopped
   frontend:
     build: ./frontend
-    ports: ["80:80"]
+    environment:
+      API_INTERNAL_URL: http://api:8000
+    ports: ["3000:3000"]
     depends_on:
       - api
     restart: unless-stopped

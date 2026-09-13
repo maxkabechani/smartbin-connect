@@ -8,9 +8,9 @@ The current production structure is `api/`, `ai-service/`, `firmware/`, and the 
 
 1. Power the ESP32.
 2. Connect to its Bluetooth service and write Wi-Fi settings in this format:
-   `SSID|PASSWORD|BIN-01|http://YOUR_VPS_IP:8000`
+   `SSID|PASSWORD|BIN-01|https://smartbin.maxkabechani.dev`
 3. The ESP32 measures the bin fill level and posts telemetry to the VPS.
-4. Open `http://YOUR_VPS_IP:8000` to view the bin.
+4. Open `https://smartbin.maxkabechani.dev` to view the dashboard.
 5. Add readings over time, then train the optional Hugging Face model with `server/train_model.py`.
 
 ## Wiring assumptions
