@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: smartbin
+      POSTGRES_USER: smartbin
+      POSTGRES_PASSWORD: change-this-password
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartbin -d smartbin"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  api:
+    build: ./api
+    env_file: ./api/.env
+    environment:
+      DATABASE_URL: postgresql://smartbin:change-this-password@postgres:5432/smartbin
+      AI_SERVICE_URL: http://ai-service:9000
+    ports: ["8000:8000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      ai-service: { condition: service_started }
+    restart: unless-stopped
+  ai-service:
+    build: ./ai-service
+    env_file: ./ai-service/.env
+    expose: ["9000"]
+    restart: unless-stopped
+volumes:
+  postgres-data:

@@ -1,0 +1,17 @@
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+.env
+**/.env
+*.db
+*.sqlite
+__pycache__/
+*.pyc
+model_artifact/
+qa_docx/
+.codex-finalizer/
+ppt_build/*.png
+ppt_output/
+AI_Integrated_*.docx
+~$*.docx
