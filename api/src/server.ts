@@ -14,6 +14,11 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT ?? 8000);
 const apiKey = process.env.API_KEY ?? 'change-me';
 const aiUrl = process.env.AI_SERVICE_URL ?? 'http://ai-service:9000';
+const claimCodes = new Map(
+  (process.env.BIN_CLAIMS ?? '').split(',')
+    .map((entry) => entry.split(':', 2) as [string, string])
+    .filter(([binId, code]) => Boolean(binId && code)),
+);
 
 await migrate(db, { migrationsFolder: path.join(root, '..', 'drizzle') });
 
@@ -57,7 +62,7 @@ app.post<{ Body: Telemetry }>('/api/telemetry', async (request, reply) => {
   if (t.api_key !== apiKey) return reply.code(401).send({ error: 'invalid api key' });
   if (!t.bin_id || !Number.isFinite(t.fill_level) || t.fill_level < 0 || t.fill_level > 100) return reply.code(400).send({ error: 'invalid telemetry' });
   const created = new Date().toISOString();
-  await db.insert(bins).values({ binId: t.bin_id, claimCode: 'unregistered', createdAt: new Date(created) }).onConflictDoNothing();
+  await db.insert(bins).values({ binId: t.bin_id, claimCode: claimCodes.get(t.bin_id) ?? 'unregistered', createdAt: new Date(created) }).onConflictDoNothing();
   await db.insert(readings).values({ binId: t.bin_id, fillLevel: t.fill_level, lidOpen: Boolean(t.lid_open), wifiRssi: t.wifi_rssi ?? 0, createdAt: new Date(created) });
   const prediction = await predict(t.fill_level, t.bin_id);
   if (prediction.priority === 'urgent' || prediction.priority === 'high') await db.insert(dispatchTasks).values({ binId: t.bin_id, priority: prediction.priority, status: 'open', reason: prediction.reason, createdAt: new Date(created) });
