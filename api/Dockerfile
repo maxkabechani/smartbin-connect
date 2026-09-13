@@ -8,7 +8,7 @@ RUN npm run build
 FROM node:22-bookworm-slim
 WORKDIR /app
 COPY --from=build /app/package*.json ./
-RUN npm install --omit=dev
+RUN npm install
 COPY --from=build /app/dist ./dist
 COPY public ./public
 EXPOSE 8000

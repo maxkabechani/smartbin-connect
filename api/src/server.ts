@@ -27,7 +27,7 @@ app.route({ method: ['GET', 'POST'], url: '/api/auth/*', async handler(request, 
   return reply.send(response.body ? await response.text() : null);
 }});
 
-async function requireUser(request: { headers: Record<string, string | string[] | undefined> }, reply: { code: (status: number) => { send: (body: unknown) => unknown } }) {
+async function requireUser(request: { headers: Record<string, string | string[] | undefined> }, reply: { code: (status: number) => { send: (body: unknown) => unknown } }): Promise<any> {
   const session = await auth.api.getSession({ headers: fromNodeHeaders(request.headers) });
   if (!session) return reply.code(401).send({ error: 'authentication required' });
   return session;

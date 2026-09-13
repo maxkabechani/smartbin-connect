@@ -1,6 +1,8 @@
 # SmartBin Connect MVP
 
-An ESP32 smart bin prototype with Bluetooth provisioning, Wi-Fi telemetry, a VPS dashboard, and an AI-ready collection-priority service.
+An ESP32 smart bin prototype with Bluetooth provisioning, Wi-Fi telemetry, a Fastify and TypeScript API, PostgreSQL with Drizzle ORM, Better Auth customer accounts, a Python AI service, and Hugging Face model hosting.
+
+The current production structure is `api/`, `ai-service/`, `firmware/`, and the root `docker-compose.yml`. See `DEPLOYMENT.md` for VPS setup.
 
 ## MVP demonstration
 
