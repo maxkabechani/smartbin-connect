@@ -95,6 +95,13 @@ function fallback(fill: number) {
   return { priority: 'low', hours_until_full: 72, reason: 'available capacity' };
 }
 
+const fallbackBinLocations: Record<string, { latitude: number; longitude: number }> = {
+  'BIN-01': { latitude: -15.408, longitude: 28.283 },
+  'BIN-02': { latitude: -15.412, longitude: 28.290 },
+  'BIN-03': { latitude: -15.419, longitude: 28.278 },
+  'BIN-04': { latitude: -15.424, longitude: 28.287 },
+};
+
 async function predict(fill: number, binId: string) {
   try {
     const response = await fetch(`${aiUrl}/predict`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ bin_id: binId, fill_level: fill }) });
@@ -152,6 +159,23 @@ app.get('/api/dispatch', async (request, reply) => {
   const session = await requireUser(request, reply); if (!session) return;
   const filter = session.user.role === 'customer' ? and(eq(dispatchTasks.status, 'open'), eq(bins.ownerUserId, session.user.id)) : eq(dispatchTasks.status, 'open');
   return db.select({ id: dispatchTasks.id, bin_id: bins.binId, priority: dispatchTasks.priority, reason: dispatchTasks.reason, status: dispatchTasks.status, owner_name: user.name, owner_email: user.email }).from(dispatchTasks).innerJoin(bins, eq(dispatchTasks.binId, bins.binId)).leftJoin(user, eq(bins.ownerUserId, user.id)).where(filter).orderBy(desc(dispatchTasks.createdAt));
+});
+
+app.get('/api/routes/optimized', async (request, reply) => {
+  if (!await requireRole(request, reply, ['collector', 'superadmin'])) return;
+  const tasks = await db.select({ bin_id: bins.binId, priority: dispatchTasks.priority, reason: dispatchTasks.reason, owner_name: user.name, latitude: bins.latitude, longitude: bins.longitude }).from(dispatchTasks).innerJoin(bins, eq(dispatchTasks.binId, bins.binId)).leftJoin(user, eq(bins.ownerUserId, user.id)).where(eq(dispatchTasks.status, 'open')).orderBy(desc(dispatchTasks.createdAt));
+  const stops = [];
+  for (const task of tasks) {
+    const latest = await db.select({ fillLevel: readings.fillLevel }).from(readings).where(eq(readings.binId, task.bin_id)).orderBy(desc(readings.createdAt)).limit(1);
+    const fallbackLocation = fallbackBinLocations[task.bin_id];
+    stops.push({ bin_id: task.bin_id, fill_level: latest[0]?.fillLevel ?? 0, priority: task.priority, reason: task.reason, owner_name: task.owner_name, latitude: task.latitude ?? fallbackLocation?.latitude ?? null, longitude: task.longitude ?? fallbackLocation?.longitude ?? null });
+  }
+  if (!stops.length) return { stops: [], total_distance_km: 0, estimated_minutes: 0, estimated_savings_percent: 0, algorithm: 'priority-weighted nearest neighbour', unlocated_stops: 0 };
+  try {
+    const response = await fetch(`${aiUrl}/optimize-route`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ stops }) });
+    if (response.ok) return await response.json();
+  } catch (error) { app.log.warn({ error }, 'AI route optimizer unavailable; using priority order'); }
+  return { stops: stops.sort((a, b) => (b.fill_level - a.fill_level)).map((stop, index) => ({ ...stop, sequence: index + 1, distance_from_previous_km: 0, location_available: Boolean(stop.latitude && stop.longitude) })), total_distance_km: 0, estimated_minutes: stops.length * 8, estimated_savings_percent: 0, algorithm: 'priority order fallback', unlocated_stops: stops.filter((stop) => stop.latitude === null || stop.longitude === null).length };
 });
 app.post<{ Params: { id: string } }>('/api/dispatch/:id/close', async (request, reply) => {
   if (!await requireRole(request, reply, ['collector', 'superadmin'])) return;

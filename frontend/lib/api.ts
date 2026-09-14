@@ -1,6 +1,8 @@
 export type Role = 'customer' | 'collector' | 'superadmin'
 export type Bin = { bin_id: string; name?: string; fill_level: number; priority: string; wifi_rssi?: number; last_seen?: string | null; owner_name?: string | null; owner_email?: string | null }
 export type Dispatch = { id: number; bin_id: string; priority: string; reason: string; status?: string; owner_name?: string | null; owner_email?: string | null }
+export type RouteStop = { sequence: number; bin_id: string; fill_level: number; priority: string; reason: string; owner_name?: string | null; distance_from_previous_km: number; location_available: boolean }
+export type OptimizedRoute = { stops: RouteStop[]; total_distance_km: number; estimated_minutes: number; estimated_savings_percent: number; algorithm: string; unlocated_stops: number }
 export type AppUser = { id: string; name: string; email: string; role: Role; created_at?: string }
 export type Session = { user: AppUser }
 export type CollectorInput = { name: string; email: string; password: string }
@@ -24,6 +26,7 @@ export const api = {
   session: () => request<Session>('/api/me'),
   bins: () => request<Bin[]>('/api/bins'),
   dispatch: () => request<Dispatch[]>('/api/dispatch'),
+  optimizedRoute: () => request<OptimizedRoute>('/api/routes/optimized'),
   claimBin: (bin_id: string, claim_code: string) => request<{ ok: true }>('/api/bins/claim', { method: 'POST', body: JSON.stringify({ bin_id, claim_code }) }),
   registerBin: (bin_id: string, claim_code: string) => request<{ ok: true }>('/api/admin/bins', { method: 'POST', body: JSON.stringify({ bin_id, claim_code }) }),
   closeDispatch: (id: number) => request<{ ok: true }>(`/api/dispatch/${id}/close`, { method: 'POST' }),
