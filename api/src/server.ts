@@ -173,6 +173,28 @@ app.patch<{ Params: { id: string }; Body: { role: Role } }>('/api/admin/users/:i
   return { ok: true };
 });
 
+app.post<{ Body: { name: string; email: string; password: string } }>('/api/admin/collectors', async (request, reply) => {
+  if (!await requireRole(request, reply, ['superadmin'])) return;
+  const name = request.body.name?.trim();
+  const email = request.body.email?.trim().toLowerCase();
+  const password = request.body.password ?? '';
+  if (!name || name.length < 2) return reply.code(400).send({ error: 'collector name is required' });
+  if (!email || !email.includes('@')) return reply.code(400).send({ error: 'enter a valid collector email' });
+  if (password.length < 8) return reply.code(400).send({ error: 'collector password must be at least 8 characters' });
+
+  try {
+    const created = await auth.api.signUpEmail({
+      headers: fromNodeHeaders(request.headers),
+      body: { name, email, password },
+    });
+    await db.update(user).set({ role: 'collector' }).where(eq(user.email, email));
+    const createdUser = await db.select({ id: user.id, name: user.name, email: user.email, role: user.role, created_at: user.createdAt }).from(user).where(eq(user.email, email)).limit(1);
+    return { ok: true, user: createdUser[0] ?? { id: created.user.id, name, email, role: 'collector' as const } };
+  } catch {
+    return reply.code(409).send({ error: 'an account with this email already exists' });
+  }
+});
+
 app.post<{ Body: { bin_id: string; claim_code: string } }>('/api/admin/bins', async (request, reply) => {
   if (!await requireRole(request, reply, ['superadmin'])) return;
   const binId = request.body.bin_id.trim();
