@@ -1,17 +1,26 @@
-# SmartBin Connect MVP
+# SmartBin Connect
 
 An ESP32 smart bin prototype with Bluetooth provisioning, Wi-Fi telemetry, a Fastify and TypeScript API, PostgreSQL with Drizzle ORM, Better Auth customer accounts, a Python AI service, and Hugging Face model hosting.
 
 The current production structure is `api/`, `ai-service/`, `firmware/`, and the root `docker-compose.yml`. See `DEPLOYMENT.md` for VPS setup.
 
-## MVP demonstration
+## Live product flow
 
 1. Power the ESP32.
 2. Connect to its Bluetooth service and write Wi-Fi settings in this format:
    `SSID|PASSWORD|BIN-01|https://smartbin.maxkabechani.dev`
-3. The ESP32 measures the bin fill level and posts telemetry to the VPS.
-4. Open `https://smartbin.maxkabechani.dev` to view the dashboard.
-5. Add readings over time, then train the optional Hugging Face model with `server/train_model.py`.
+3. A superadmin registers the device in the administration screen.
+4. The ESP32 measures the bin fill level and posts telemetry to the VPS.
+5. The customer creates an account and links the bin with its claim code.
+6. The customer sees their own readings and collection requests; collectors see fleet operations.
+
+## Roles
+
+- `customer`: links owned bins and views their telemetry and collection requests.
+- `collector`: views fleet telemetry and closes collection tasks after pickup.
+- `superadmin`: manages users, roles, and device registration.
+
+New accounts are customers by default. Set `SUPERADMIN_EMAILS` and `COLLECTOR_EMAILS` in the API environment to bootstrap staff roles.
 
 ## Wiring assumptions
 
@@ -28,15 +37,8 @@ The current production structure is `api/`, `ai-service/`, `firmware/`, and the 
 
 If your kit has different parts, change the constants at the top of `firmware/SmartBin.ino`.
 
-## VPS quick start
+## Deployment
 
-```text
-cd server
-python -m venv .venv
-pip install -r requirements.txt
-uvicorn app:app --host 0.0.0.0 --port 8000
-```
+See `DEPLOYMENT.md` for Dokploy and VPS setup. The platform uses Fastify with TypeScript, PostgreSQL 18 Alpine, Drizzle, Better Auth, and a separate Python AI service.
 
-For deployment, copy `server/.env.example` to `.env`, set an API key, and run `docker compose up -d --build`.
-
-The VPS runs the small prediction logic locally. Hugging Face is used as the model and dataset registry. A Hugging Face token belongs on the VPS only, never in the ESP32 firmware.
+The VPS runs the prediction service locally. Hugging Face is used as the model registry. A Hugging Face token belongs on the VPS only, never in the ESP32 firmware.

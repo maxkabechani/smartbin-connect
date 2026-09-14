@@ -7,5 +7,10 @@ export const auth = betterAuth({
   baseURL: process.env.AUTH_URL ?? 'http://localhost:8000',
   trustedOrigins: (process.env.TRUSTED_ORIGINS ?? 'http://localhost:8000').split(','),
   emailAndPassword: { enabled: true },
+  user: {
+    additionalFields: {
+      role: { type: 'string', required: false, defaultValue: 'customer', input: false },
+    },
+  },
   advanced: { database: { joins: true } }
 });

@@ -28,14 +28,6 @@ body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSyst
 [class*="text-rose-"] { color: #a86612 !important; }
 [class*="border-rose-"]:not([class*="/"]) { border-color: #efd39e !important; }
 
-aside > div:first-child > div:first-child {
-  width: 214px;
-  height: 52px;
-  background: url('/smartbin-logo.svg') left center / contain no-repeat;
-  background-color: transparent !important;
-}
-aside > div:first-child > div:first-child > svg,
-aside > div:first-child > div:nth-child(2) { display: none; }
 
 .dark {
   --sidebar: hsl(240 5.9% 10%);
