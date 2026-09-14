@@ -14,6 +14,7 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT ?? 8000);
 const apiKey = process.env.API_KEY ?? 'change-me';
 const aiUrl = process.env.AI_SERVICE_URL ?? 'http://ai-service:9000';
+const routeDepot = { latitude: Number(process.env.ROUTE_DEPOT_LATITUDE ?? '-15.401'), longitude: Number(process.env.ROUTE_DEPOT_LONGITUDE ?? '28.275') };
 const claimCodes = new Map(
   (process.env.BIN_CLAIMS ?? '').split(',')
     .map((entry) => entry.split(':', 2) as [string, string])
@@ -172,7 +173,7 @@ app.get('/api/routes/optimized', async (request, reply) => {
   }
   if (!stops.length) return { stops: [], distance_to_first_km: 0, between_stops_distance_km: 0, outbound_distance_km: 0, return_distance_km: 0, total_distance_km: 0, estimated_minutes: 0, estimated_savings_percent: 0, algorithm: 'priority-weighted nearest neighbour', unlocated_stops: 0 };
   try {
-    const response = await fetch(`${aiUrl}/optimize-route`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ stops, return_to_start: true }) });
+    const response = await fetch(`${aiUrl}/optimize-route`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ stops, start_latitude: routeDepot.latitude, start_longitude: routeDepot.longitude, return_to_start: true }) });
     if (response.ok) return await response.json();
   } catch (error) { app.log.warn({ error }, 'AI route optimizer unavailable; using priority order'); }
   const orderedStops = stops.sort((a, b) => (b.fill_level - a.fill_level));

@@ -32,8 +32,8 @@ class RouteStop(BaseModel):
 
 class RouteRequest(BaseModel):
     stops: list[RouteStop]
-    start_latitude: float = float(os.getenv('ROUTE_DEPOT_LATITUDE', '-15.408'))
-    start_longitude: float = float(os.getenv('ROUTE_DEPOT_LONGITUDE', '28.283'))
+    start_latitude: float = float(os.getenv('ROUTE_DEPOT_LATITUDE', '-15.401'))
+    start_longitude: float = float(os.getenv('ROUTE_DEPOT_LONGITUDE', '28.275'))
     return_to_start: bool = True
 
 @app.get('/health')
