@@ -101,10 +101,11 @@ function DispatchScreen({ dispatch, role, onClose, route, routeLoading }: { disp
         <span className="w-fit rounded-full bg-cyan-400/15 px-3 py-1.5 text-xs font-semibold text-cyan-200">{route?.stops.length ? 'Route ready' : 'No route required'}</span>
       </div>
       {routeLoading ? <div className="mt-6 flex items-center gap-2 rounded-xl bg-white/8 p-4 text-sm text-slate-300"><RefreshCw size={16} className="animate-spin text-cyan-300" />Building the best stop order…</div> : route?.stops.length ? <>
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-xl bg-white/8 p-4"><p className="text-xs uppercase tracking-wide text-slate-400">Stops</p><p className="mt-2 text-2xl font-semibold">{route.stops.length}</p></div>
-          <div className="rounded-xl bg-white/8 p-4"><p className="text-xs uppercase tracking-wide text-slate-400">Estimated distance</p><p className="mt-2 text-2xl font-semibold">{route.total_distance_km.toFixed(1)} km</p></div>
-          <div className="rounded-xl bg-white/8 p-4"><p className="text-xs uppercase tracking-wide text-slate-400">Estimated time</p><p className="mt-2 text-2xl font-semibold">{route.estimated_minutes} min</p></div>
+          <div className="rounded-xl bg-white/8 p-4"><p className="text-xs uppercase tracking-wide text-slate-400">Total trip</p><p className="mt-2 text-2xl font-semibold">{route.total_distance_km.toFixed(1)} km</p><p className="mt-1 text-xs text-slate-500">Round trip to site</p></div>
+          <div className="rounded-xl bg-white/8 p-4"><p className="text-xs uppercase tracking-wide text-slate-400">To first bin</p><p className="mt-2 text-2xl font-semibold">{route.distance_to_first_km.toFixed(1)} km</p><p className="mt-1 text-xs text-slate-500">From disposal site</p></div>
+          <div className="rounded-xl bg-white/8 p-4"><p className="text-xs uppercase tracking-wide text-slate-400">Return to site</p><p className="mt-2 text-2xl font-semibold">{route.return_distance_km.toFixed(1)} km</p><p className="mt-1 text-xs text-slate-500">After final collection · {route.estimated_minutes} min total</p></div>
         </div>
         <div className="mt-6 space-y-3">{route.stops.map((stop) => <div key={stop.bin_id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
           <div className="grid size-9 shrink-0 place-items-center rounded-full bg-cyan-400/15 text-sm font-semibold text-cyan-200">{stop.sequence}</div>
@@ -112,7 +113,7 @@ function DispatchScreen({ dispatch, role, onClose, route, routeLoading }: { disp
           <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${stop.priority === 'urgent' ? 'bg-rose-400/15 text-rose-200' : 'bg-amber-400/15 text-amber-200'}`}>{stop.priority}</span><span className="text-sm font-semibold text-cyan-200">{Math.round(stop.fill_level)}%</span>
         </div>)}</div>
         {route.unlocated_stops > 0 && <p className="mt-4 text-xs leading-5 text-amber-200">Add coordinates when registering new bins to improve distance estimates. Unlocated stops remain in priority order.</p>}
-        <p className="mt-4 text-xs text-slate-500">Optimizer: {route.algorithm}{route.estimated_savings_percent ? ` · estimated ${route.estimated_savings_percent}% route saving` : ''}</p>
+        <p className="mt-4 text-xs text-slate-500">Outbound route: {route.outbound_distance_km.toFixed(1)} km · Between stops: {route.between_stops_distance_km.toFixed(1)} km · Optimizer: {route.algorithm}{route.estimated_savings_percent ? ` · estimated ${route.estimated_savings_percent}% route saving` : ''}</p>
       </> : <div className="mt-6 rounded-xl border border-dashed border-white/15 p-5 text-sm text-slate-400">No open collection tasks need a route right now.</div>}
     </section>}
     <div className="grid gap-4 sm:grid-cols-3"><StatCard label="Open tasks" value={String(dispatch.length)} detail={role === 'customer' ? 'Your collection requests' : 'Awaiting field collection'} icon={Truck} tone="amber" /><StatCard label="High priority" value={String(dispatch.filter((task) => task.priority === 'high' || task.priority === 'urgent').length)} detail="Should be routed first" icon={AlertTriangle} tone="amber" /><StatCard label="Route efficiency" value={route?.estimated_savings_percent ? `${route.estimated_savings_percent}%` : '—'} detail={operational ? 'Estimated route saving' : 'Available to the collection team'} icon={Route} tone="slate" /></div>

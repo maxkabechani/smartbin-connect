@@ -170,12 +170,13 @@ app.get('/api/routes/optimized', async (request, reply) => {
     const fallbackLocation = fallbackBinLocations[task.bin_id];
     stops.push({ bin_id: task.bin_id, fill_level: latest[0]?.fillLevel ?? 0, priority: task.priority, reason: task.reason, owner_name: task.owner_name, latitude: task.latitude ?? fallbackLocation?.latitude ?? null, longitude: task.longitude ?? fallbackLocation?.longitude ?? null });
   }
-  if (!stops.length) return { stops: [], total_distance_km: 0, estimated_minutes: 0, estimated_savings_percent: 0, algorithm: 'priority-weighted nearest neighbour', unlocated_stops: 0 };
+  if (!stops.length) return { stops: [], distance_to_first_km: 0, between_stops_distance_km: 0, outbound_distance_km: 0, return_distance_km: 0, total_distance_km: 0, estimated_minutes: 0, estimated_savings_percent: 0, algorithm: 'priority-weighted nearest neighbour', unlocated_stops: 0 };
   try {
-    const response = await fetch(`${aiUrl}/optimize-route`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ stops }) });
+    const response = await fetch(`${aiUrl}/optimize-route`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ stops, return_to_start: true }) });
     if (response.ok) return await response.json();
   } catch (error) { app.log.warn({ error }, 'AI route optimizer unavailable; using priority order'); }
-  return { stops: stops.sort((a, b) => (b.fill_level - a.fill_level)).map((stop, index) => ({ ...stop, sequence: index + 1, distance_from_previous_km: 0, location_available: Boolean(stop.latitude && stop.longitude) })), total_distance_km: 0, estimated_minutes: stops.length * 8, estimated_savings_percent: 0, algorithm: 'priority order fallback', unlocated_stops: stops.filter((stop) => stop.latitude === null || stop.longitude === null).length };
+  const orderedStops = stops.sort((a, b) => (b.fill_level - a.fill_level));
+  return { stops: orderedStops.map((stop, index) => ({ ...stop, sequence: index + 1, distance_from_previous_km: 0, location_available: stop.latitude !== null && stop.longitude !== null })), distance_to_first_km: 0, between_stops_distance_km: 0, outbound_distance_km: 0, return_distance_km: 0, total_distance_km: 0, estimated_minutes: orderedStops.length * 8, estimated_savings_percent: 0, algorithm: 'priority order fallback', unlocated_stops: orderedStops.filter((stop) => stop.latitude === null || stop.longitude === null).length };
 });
 app.post<{ Params: { id: string } }>('/api/dispatch/:id/close', async (request, reply) => {
   if (!await requireRole(request, reply, ['collector', 'superadmin'])) return;

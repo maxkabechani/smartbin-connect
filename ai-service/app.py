@@ -32,8 +32,9 @@ class RouteStop(BaseModel):
 
 class RouteRequest(BaseModel):
     stops: list[RouteStop]
-    start_latitude: float = -15.408
-    start_longitude: float = 28.283
+    start_latitude: float = float(os.getenv('ROUTE_DEPOT_LATITUDE', '-15.408'))
+    start_longitude: float = float(os.getenv('ROUTE_DEPOT_LONGITUDE', '28.283'))
+    return_to_start: bool = True
 
 @app.get('/health')
 def health(): return {'ok': True, 'model_loaded': model is not None}
@@ -72,7 +73,14 @@ def optimize_route(request: RouteRequest):
         remaining.remove(next_stop)
 
     ordered.extend((stop, 0.0) for stop in sorted(unlocated, key=lambda item: (-priority_weight.get(item.priority, 0.0), -item.fill_level)))
-    total_distance = round(sum(leg for _, leg in ordered), 1)
+    distance_to_first = ordered[0][1] if ordered else 0.0
+    between_stops = sum(leg for _, leg in ordered[1:]) if ordered else 0.0
+    return_distance = 0.0
+    if request.return_to_start and located:
+        last_stop = ordered[len(located) - 1][0]
+        return_distance = distance_km(last_stop.latitude, last_stop.longitude, request.start_latitude, request.start_longitude)
+    outbound_distance = distance_to_first + between_stops
+    total_distance = outbound_distance + return_distance
     estimated_minutes = max(8, round(total_distance * 4 + len(ordered) * 8)) if ordered else 0
     return {
         'stops': [
@@ -88,7 +96,11 @@ def optimize_route(request: RouteRequest):
             }
             for index, (stop, leg) in enumerate(ordered, start=1)
         ],
-        'total_distance_km': total_distance,
+        'distance_to_first_km': round(distance_to_first, 1),
+        'between_stops_distance_km': round(between_stops, 1),
+        'outbound_distance_km': round(outbound_distance, 1),
+        'return_distance_km': round(return_distance, 1),
+        'total_distance_km': round(total_distance, 1),
         'estimated_minutes': estimated_minutes,
         'estimated_savings_percent': min(35, max(8, 8 + len(ordered) * 2)) if ordered else 0,
         'algorithm': 'priority-weighted nearest neighbour',
