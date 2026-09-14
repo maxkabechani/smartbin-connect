@@ -21,3 +21,6 @@ AI_Integrated_*.docx
 build_report.py
 ppt_build/
 server/
+
+ai-service/model.joblib
+

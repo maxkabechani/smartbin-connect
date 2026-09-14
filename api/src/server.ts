@@ -8,7 +8,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { auth } from './auth.js';
 import { db, pool } from './db/index.js';
 import { bins, readings, dispatchTasks } from './db/schema.js';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT ?? 8000);
@@ -21,6 +21,33 @@ const claimCodes = new Map(
 );
 
 await migrate(db, { migrationsFolder: path.join(root, '..', 'drizzle') });
+
+async function seedDemoData() {
+  if (process.env.SEED_DEMO_DATA === 'false') return;
+  const existing = await db.select({ id: bins.id }).from(bins).limit(1);
+  if (existing.length) return;
+
+  const now = Date.now();
+  const demoBins = [
+    { binId: 'BIN-01', claimCode: 'smartbin-demo' },
+    { binId: 'BIN-02', claimCode: 'claim-02' },
+    { binId: 'BIN-03', claimCode: 'claim-03' },
+    { binId: 'BIN-04', claimCode: 'claim-04' },
+  ];
+  await db.insert(bins).values(demoBins);
+  await db.insert(readings).values([
+    { binId: 'BIN-01', fillLevel: 82, lidOpen: false, wifiRssi: -54, createdAt: new Date(now - 2 * 60_000) },
+    { binId: 'BIN-02', fillLevel: 46, lidOpen: false, wifiRssi: -61, createdAt: new Date(now - 5 * 60_000) },
+    { binId: 'BIN-03', fillLevel: 18, lidOpen: false, wifiRssi: -67, createdAt: new Date(now - 8 * 60_000) },
+    { binId: 'BIN-04', fillLevel: 68, lidOpen: false, wifiRssi: -58, createdAt: new Date(now - 12 * 60_000) },
+  ]);
+  await db.insert(dispatchTasks).values([
+    { binId: 'BIN-01', priority: 'high', status: 'open', reason: 'near full', createdAt: new Date(now - 2 * 60_000) },
+  ]);
+  console.log('Seeded SmartBin demo data');
+}
+
+await seedDemoData();
 
 type Telemetry = { api_key: string; bin_id: string; fill_level: number; lid_open?: boolean; wifi_rssi?: number };
 const app = Fastify({ logger: true });
@@ -57,6 +84,18 @@ async function predict(fill: number, binId: string) {
 }
 
 app.get('/health', async () => ({ ok: true, service: 'smartbin-api' }));
+app.get('/api/demo', async () => {
+  const allBins = await db.select().from(bins).orderBy(bins.binId);
+  const allReadings = await db.select().from(readings).orderBy(desc(readings.createdAt));
+  const latestByBin = new Map<string, (typeof allReadings)[number]>();
+  for (const reading of allReadings) if (!latestByBin.has(reading.binId)) latestByBin.set(reading.binId, reading);
+  const demoReadings = allBins.map((bin) => {
+    const latest = latestByBin.get(bin.binId);
+    return { bin_id: bin.binId, fill_level: latest?.fillLevel ?? 0, wifi_rssi: latest?.wifiRssi ?? 0, last_seen: latest?.createdAt?.toISOString() ?? null, priority: fallback(latest?.fillLevel ?? 0).priority };
+  });
+  const demoDispatch = await db.select({ id: dispatchTasks.id, bin_id: bins.binId, priority: dispatchTasks.priority, reason: dispatchTasks.reason, status: dispatchTasks.status }).from(dispatchTasks).innerJoin(bins, eq(dispatchTasks.binId, bins.binId)).where(eq(dispatchTasks.status, 'open')).orderBy(desc(dispatchTasks.createdAt));
+  return { bins: demoReadings, dispatch: demoDispatch };
+});
 app.post<{ Body: Telemetry }>('/api/telemetry', async (request, reply) => {
   const t = request.body;
   if (t.api_key !== apiKey) return reply.code(401).send({ error: 'invalid api key' });
@@ -83,7 +122,7 @@ app.get('/api/bins', async (request, reply) => {
   const session = await requireUser(request, reply); if (!session) return;
   const owned = await db.select().from(bins).where(eq(bins.ownerUserId, session.user.id));
   const result = [];
-  for (const bin of owned) { const latest = await db.select().from(readings).where(eq(readings.binId, bin.binId)).orderBy(desc(readings.createdAt)).limit(1); if (latest[0]) result.push({ ...latest[0], bin_id: bin.binId, fill_level: latest[0].fillLevel, priority: fallback(latest[0].fillLevel).priority }); }
+  for (const bin of owned) { const latest = await db.select().from(readings).where(eq(readings.binId, bin.binId)).orderBy(desc(readings.createdAt)).limit(1); if (latest[0]) result.push({ bin_id: bin.binId, fill_level: latest[0].fillLevel, lid_open: latest[0].lidOpen, wifi_rssi: latest[0].wifiRssi, last_seen: latest[0].createdAt.toISOString(), priority: fallback(latest[0].fillLevel).priority }); }
   return result.sort((a,b) => b.fill_level-a.fill_level);
 });
 

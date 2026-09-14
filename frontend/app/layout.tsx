@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import "./globals.css"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { Providers } from "@/components/providers"
 
 export const metadata: Metadata = {
   title: "SmartBin Connect",
@@ -8,5 +9,5 @@ export const metadata: Metadata = {
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body><TooltipProvider>{children}</TooltipProvider></body></html>
+  return <html lang="en"><body><Providers><TooltipProvider>{children}</TooltipProvider></Providers></body></html>
 }
