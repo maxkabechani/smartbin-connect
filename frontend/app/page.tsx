@@ -3,7 +3,7 @@
 import type { FormEvent, ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Activity, AlertTriangle, Bell, Bot, CheckCircle2, ChevronRight, CircleHelp, Cloud,
@@ -37,6 +37,12 @@ function currentView(pathname: string): View {
 
 function roleLabel(role: Role) {
   return role === 'superadmin' ? 'Superadmin' : role === 'collector' ? 'Collector' : 'Customer'
+}
+
+function nameInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length < 2) return (parts[0]?.slice(0, 2) || '?').toUpperCase()
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
 }
 
 function lastSeen(value?: string | null) {
@@ -165,7 +171,7 @@ function ProfileScreen({ user }: { user: AppUser }) {
     passwordMutation.mutate()
   }
 
-  const initials = user.name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase()
+  const initials = nameInitials(user.name)
   return <div className="space-y-6"><section className="rounded-2xl border border-[#23344a] bg-[#142439] p-6 text-white shadow-[0_16px_40px_rgba(20,36,57,0.16)]"><div className="flex flex-col gap-5 sm:flex-row sm:items-center"><div className="grid size-16 shrink-0 place-items-center rounded-2xl bg-cyan-400/15 text-xl font-semibold text-cyan-200">{initials}</div><div><p className="text-sm font-semibold text-cyan-300">Account profile</p><h2 className="mt-1 text-2xl font-semibold">{user.name}</h2><div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-300"><span>{user.email}</span><span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold text-cyan-200">{roleLabel(user.role)}</span></div></div></div></section><div className="grid gap-5 xl:grid-cols-2"><section className="rounded-2xl border border-[#dde5ef] bg-white p-5 shadow-[0_12px_32px_rgba(21,34,54,0.05)] sm:p-6"><div className="flex items-start gap-3"><div className="rounded-xl bg-cyan-50 p-3 text-cyan-700"><UserRound size={19} /></div><div><h2 className="font-semibold text-[#152236]">Personal details</h2><p className="mt-1 text-sm text-[#68788d]">Keep the name shown across your workspace up to date.</p></div></div><form onSubmit={saveProfile} className="mt-6 space-y-4"><label className="block text-sm font-medium text-[#34445a]">Display name<input value={name} onChange={(event) => setName(event.target.value)} required autoComplete="name" className="mt-2 w-full rounded-xl border border-[#d7e0eb] px-3 py-2.5 outline-none ring-cyan-500 focus:ring-2" /></label><label className="block text-sm font-medium text-[#34445a]">Email address<input value={user.email} readOnly aria-describedby="email-note" className="mt-2 w-full cursor-not-allowed rounded-xl border border-[#d7e0eb] bg-slate-50 px-3 py-2.5 text-[#68788d] outline-none" /></label><p id="email-note" className="text-xs leading-5 text-[#7a899c]">Your email is used for sign-in and cannot be changed from this screen.</p>{profileMessage && <p role="alert" className={`rounded-xl border px-3 py-2.5 text-sm ${profileSuccess ? 'border-cyan-200 bg-cyan-50 text-cyan-900' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>{profileMessage}</p>}<button disabled={profileMutation.isPending} className="flex items-center justify-center gap-2 rounded-xl bg-[#152236] px-4 py-3 text-sm font-semibold text-white hover:bg-[#23344a] disabled:opacity-60">{profileMutation.isPending ? <RefreshCw size={16} className="animate-spin" /> : <Settings2 size={16} />}Save profile</button></form></section><section className="rounded-2xl border border-[#dde5ef] bg-white p-5 shadow-[0_12px_32px_rgba(21,34,54,0.05)] sm:p-6"><div className="flex items-start gap-3"><div className="rounded-xl bg-cyan-50 p-3 text-cyan-700"><KeyRound size={19} /></div><div><h2 className="font-semibold text-[#152236]">Password and security</h2><p className="mt-1 text-sm text-[#68788d]">Change your password without leaving the dashboard.</p></div></div><form onSubmit={savePassword} className="mt-6 space-y-4"><label className="block text-sm font-medium text-[#34445a]">Current password<input value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required type="password" autoComplete="current-password" className="mt-2 w-full rounded-xl border border-[#d7e0eb] px-3 py-2.5 outline-none ring-cyan-500 focus:ring-2" /></label><label className="block text-sm font-medium text-[#34445a]">New password<input value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required minLength={8} type="password" autoComplete="new-password" className="mt-2 w-full rounded-xl border border-[#d7e0eb] px-3 py-2.5 outline-none ring-cyan-500 focus:ring-2" /></label><label className="block text-sm font-medium text-[#34445a]">Confirm new password<input value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required minLength={8} type="password" autoComplete="new-password" className="mt-2 w-full rounded-xl border border-[#d7e0eb] px-3 py-2.5 outline-none ring-cyan-500 focus:ring-2" /></label>{passwordMessage && <p role="alert" className={`rounded-xl border px-3 py-2.5 text-sm ${passwordSuccess ? 'border-cyan-200 bg-cyan-50 text-cyan-900' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>{passwordMessage}</p>}<button disabled={passwordMutation.isPending} className="flex items-center justify-center gap-2 rounded-xl bg-[#152236] px-4 py-3 text-sm font-semibold text-white hover:bg-[#23344a] disabled:opacity-60">{passwordMutation.isPending ? <RefreshCw size={16} className="animate-spin" /> : <KeyRound size={16} />}Change password</button></form></section></div></div>
 }
 
@@ -189,6 +195,7 @@ export default function Dashboard() {
   const [search, setSearch] = useState('')
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const notificationRef = useRef<HTMLDivElement>(null)
 
   const sessionQuery = useQuery({ queryKey: ['session'], queryFn: api.session, retry: false, staleTime: 5 * 60_000 })
   const signedIn = Boolean(sessionQuery.data)
@@ -204,6 +211,15 @@ export default function Dashboard() {
   const closeMutation = useMutation({ mutationFn: api.closeDispatch, onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['dispatch'] }); await queryClient.invalidateQueries({ queryKey: ['optimized-route'] }); await queryClient.invalidateQueries({ queryKey: ['bins'] }) } })
   const roleMutation = useMutation({ mutationFn: ({ id, nextRole }: { id: string; nextRole: Role }) => api.updateUserRole(id, nextRole), onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['admin-users'] }) } })
   const collectorMutation = useMutation({ mutationFn: api.createCollector, onSuccess: async () => { setModal(null); setModalMessage(''); await queryClient.invalidateQueries({ queryKey: ['admin-users'] }) }, onError: (error: Error) => setModalMessage(error.message) })
+
+  useEffect(() => {
+    if (!notificationOpen) return
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) setNotificationOpen(false)
+    }
+    document.addEventListener('pointerdown', closeOnOutsidePress)
+    return () => document.removeEventListener('pointerdown', closeOnOutsidePress)
+  }, [notificationOpen])
 
   const bins = binsQuery.data ?? []
   const dispatch = dispatchQuery.data ?? []
@@ -263,12 +279,12 @@ export default function Dashboard() {
             <button className="lg:hidden" onClick={() => setMenuOpen(true)} aria-label="Open menu"><Menu size={22} /></button>
             <div className="flex-1"><div className="flex items-center gap-2 text-sm text-[#7a899c]"><span>Workspace</span><ChevronRight size={14} /><span className="font-medium text-[#34445a]">{titles[view].title}</span></div></div>
             {view !== 'admin' && view !== 'profile' && <div className="hidden items-center gap-2 rounded-xl border border-[#d7e0eb] bg-white px-3 py-2 text-sm text-[#7a899c] md:flex"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search bins" className="w-28 bg-transparent outline-none placeholder:text-[#9aa7b7]" /></div>}
-            <div className="relative">
+            <div ref={notificationRef} className="relative">
               <button type="button" onClick={() => setNotificationOpen(!notificationOpen)} className="relative rounded-xl border border-[#d7e0eb] bg-white p-2.5 text-[#516176] hover:border-cyan-300" aria-label={`Notifications${dispatch.length ? `, ${dispatch.length} unread` : ''}`} aria-expanded={notificationOpen}><Bell size={18} />{dispatch.length > 0 && <span className="absolute -right-1 -top-1 grid min-w-4 place-items-center rounded-full bg-amber-400 px-1 py-0.5 text-[9px] font-bold text-[#111c2d]">{dispatch.length > 9 ? '9+' : dispatch.length}</span>}</button>
               {notificationOpen && <div className="absolute right-0 z-20 mt-2 w-[min(21rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-[#dde5ef] bg-white shadow-xl"><div className="flex items-center justify-between border-b border-slate-100 px-4 py-3"><div><p className="font-semibold text-[#152236]">Notifications</p><p className="mt-0.5 text-xs text-[#7a899c]">Live collection alerts</p></div><span className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700">{dispatch.length} open</span></div>{dispatch.length ? <div className="max-h-80 overflow-y-auto">{dispatch.slice(0, 6).map((task) => <Link key={task.id} href="/dispatch" onClick={() => setNotificationOpen(false)} className="block border-b border-slate-100 px-4 py-3 hover:bg-slate-50"><div className="flex items-start gap-3"><div className="mt-0.5 rounded-lg bg-amber-50 p-2 text-amber-600"><Truck size={15} /></div><div className="min-w-0"><p className="text-sm font-medium text-[#152236]">{binNames[task.bin_id] ?? task.bin_id} needs collection</p><p className="mt-1 text-xs leading-5 text-[#68788d]">{task.reason}</p><p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700">{task.priority} priority</p></div></div></Link>)}</div> : <div className="px-4 py-8 text-center"><CheckCircle2 className="mx-auto text-cyan-600" size={22} /><p className="mt-2 text-sm font-medium text-[#152236]">You’re all caught up</p><p className="mt-1 text-xs text-[#7a899c]">New collection alerts will appear here.</p></div>}<Link href="/dispatch" onClick={() => setNotificationOpen(false)} className="block border-t border-slate-100 px-4 py-3 text-center text-xs font-semibold text-cyan-700 hover:bg-slate-50">Open collection dispatch</Link></div>}
             </div>
             <div className="relative">
-              <button type="button" onClick={() => setAccountOpen(!accountOpen)} className="flex items-center gap-2 rounded-xl border border-[#d7e0eb] bg-white p-1.5 pr-3" aria-expanded={accountOpen}><div className="grid size-8 place-items-center rounded-lg bg-cyan-100 text-sm font-semibold text-cyan-800">{currentUser.name.slice(0, 2).toUpperCase()}</div><span className="hidden text-sm font-medium text-[#34445a] sm:inline">{roleLabel(role)}</span></button>
+              <button type="button" onClick={() => setAccountOpen(!accountOpen)} className="flex items-center gap-2 rounded-xl border border-[#d7e0eb] bg-white p-1.5 pr-3" aria-expanded={accountOpen}><div className="grid size-8 place-items-center rounded-lg bg-cyan-100 text-sm font-semibold text-cyan-800">{nameInitials(currentUser.name)}</div><span className="hidden text-sm font-medium text-[#34445a] sm:inline">{roleLabel(role)}</span></button>
               {accountOpen && <div className="absolute right-0 mt-2 w-60 rounded-xl border border-[#dde5ef] bg-white p-2 text-sm shadow-xl"><div className="border-b border-slate-100 px-3 py-2"><p className="font-medium text-[#152236]">{currentUser.name}</p><p className="mt-1 truncate text-xs text-[#68788d]">{currentUser.email}</p></div><Link href="/profile" onClick={() => setAccountOpen(false)} className="mt-1 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[#516176] hover:bg-slate-50"><Settings2 size={15} />Profile settings</Link><button type="button" onClick={() => signOutMutation.mutate()} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[#516176] hover:bg-slate-50"><LogOut size={15} />Sign out</button></div>}
             </div>
           </div>
