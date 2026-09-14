@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="SmartBin Connect">
+  <rect width="64" height="64" rx="18" fill="#102034"/>
+  <rect x="11" y="22" width="34" height="29" rx="3" fill="#3DBDB5"/>
+  <path d="M9 19h38M19 13h18l3 6H16l3-6Z" fill="none" stroke="#F4F7FB" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M22 29v15M34 29v15M49 17c4 3 6 6 6 11" fill="none" stroke="#F4F7FB" stroke-width="3" stroke-linecap="round"/>
+</svg>
