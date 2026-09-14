@@ -242,7 +242,6 @@ export default function Dashboard() {
           <Link href="/profile" onClick={() => setMenuOpen(false)} aria-current={view === 'profile' ? 'page' : undefined} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm transition ${view === 'profile' ? 'bg-white/10 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}><Settings2 size={17} />Profile and access</Link>
           <button type="button" className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm text-slate-400 hover:bg-white/5 hover:text-white"><CircleHelp size={17} />Help centre</button>
         </div>
-        <div className="absolute bottom-5 left-4 right-4 rounded-2xl border border-white/10 bg-white/5 p-4"><div className="flex items-center gap-2 text-xs font-medium text-slate-200"><ShieldCheck size={15} className="text-cyan-300" />Secure workspace</div><p className="mt-2 text-xs leading-5 text-slate-500">Your access is limited to the role assigned to your account.</p></div>
       </aside>
       {menuOpen && <button aria-label="Close menu" className="fixed inset-0 z-20 bg-[#0f172a]/30 lg:hidden" onClick={() => setMenuOpen(false)} />}
       <main className="lg:pl-72">
