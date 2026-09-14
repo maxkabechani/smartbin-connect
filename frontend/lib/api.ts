@@ -8,9 +8,13 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { credentials: 'include', ...init, headers: { 'content-type': 'application/json', ...(init?.headers || {}) } })
   if (!response.ok) {
     const body = await response.text()
-    let parsed: { error?: string } | null = null
-    try { parsed = JSON.parse(body) as { error?: string } } catch { /* keep the raw response */ }
-    throw new Error(parsed?.error || body || `Request failed (${response.status})`)
+    let parsed: { error?: string; message?: string; code?: string } | null = null
+    try { parsed = JSON.parse(body) as { error?: string; message?: string; code?: string } } catch { /* keep the raw response */ }
+    if (parsed?.code === 'INVALID_EMAIL_OR_PASSWORD' || response.status === 401) throw new Error('The email or password is incorrect.')
+    if (parsed?.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL') throw new Error('An account with this email already exists. Try signing in instead.')
+    if (parsed?.code === 'PASSWORD_TOO_SHORT') throw new Error('Use a password with at least 8 characters.')
+    if (parsed?.code === 'INVALID_EMAIL') throw new Error('Enter a valid email address.')
+    throw new Error(parsed?.message || parsed?.error || 'We could not complete that request. Please try again.')
   }
   return response.json() as Promise<T>
 }
