@@ -4,11 +4,12 @@ import fastifyStatic from '@fastify/static';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fromNodeHeaders } from 'better-auth/node';
+import { createHash, randomBytes } from 'node:crypto';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { auth } from './auth.js';
 import { db, pool } from './db/index.js';
 import { bins, readings, dispatchTasks, user } from './db/schema.js';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, isNull, ne, or } from 'drizzle-orm';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT ?? 8000);
@@ -49,6 +50,9 @@ async function seedInitialData() {
 }
 
 await seedInitialData();
+// Old installations may still have claim codes for bins that were already linked.
+// A claim code is only useful before ownership is assigned, so clear those secrets.
+await db.update(bins).set({ claimCode: '' }).where(and(isNotNull(bins.ownerUserId), ne(bins.claimCode, '')));
 
 type Telemetry = { api_key: string; bin_id: string; fill_level: number; lid_open?: boolean; wifi_rssi?: number };
 const app = Fastify({ logger: true });
@@ -79,6 +83,17 @@ async function requireUser(request: { headers: Record<string, string | string[] 
 }
 
 type Role = 'customer' | 'collector' | 'superadmin';
+
+function generateClaimCode() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const characters = Array.from(randomBytes(16), (byte) => alphabet[byte & 31]).join('');
+  return characters.match(/.{4}/g)!.join('-');
+}
+
+function hashClaimCode(code: string) {
+  const normalized = code.trim().toUpperCase().replace(/[\s-]/g, '');
+  return createHash('sha256').update(normalized).digest('hex');
+}
 
 function configuredRole(email: string): Role | null {
   const normalized = email.trim().toLowerCase();
@@ -147,10 +162,24 @@ app.get('/api/me', async (request, reply) => {
 
 app.post<{ Body: { bin_id: string; claim_code: string } }>('/api/bins/claim', async (request, reply) => {
   const session = await requireRole(request, reply, ['customer']); if (!session) return;
-  const row = await db.select().from(bins).where(eq(bins.binId, request.body.bin_id)).limit(1);
-  if (!row[0] || row[0].claimCode !== request.body.claim_code) return reply.code(400).send({ error: 'invalid bin or claim code' });
-  if (row[0].ownerUserId && row[0].ownerUserId !== session.user.id) return reply.code(409).send({ error: 'bin already linked' });
-  await db.update(bins).set({ ownerUserId: session.user.id }).where(eq(bins.binId, request.body.bin_id)); return { ok: true, bin_id: request.body.bin_id };
+  const binId = typeof request.body?.bin_id === 'string' ? request.body.bin_id.trim() : '';
+  const claimCode = typeof request.body?.claim_code === 'string' ? request.body.claim_code.trim() : '';
+  if (!binId || !claimCode) return reply.code(400).send({ error: 'bin ID and claim code are required' });
+
+  // New codes are hashed at rest. The raw comparison supports pre-existing codes
+  // until their first claim, and the conditional update makes redemption atomic.
+  const claimed = await db.update(bins).set({ ownerUserId: session.user.id, claimCode: '' })
+    .where(and(
+      eq(bins.binId, binId),
+      isNull(bins.ownerUserId),
+      or(eq(bins.claimCode, hashClaimCode(claimCode)), eq(bins.claimCode, claimCode)),
+    ))
+    .returning({ binId: bins.binId });
+  if (claimed.length) return { ok: true, bin_id: binId };
+
+  const existing = await db.select({ ownerUserId: bins.ownerUserId }).from(bins).where(eq(bins.binId, binId)).limit(1);
+  if (existing[0]?.ownerUserId) return reply.code(409).send({ error: 'bin already linked' });
+  return reply.code(400).send({ error: 'invalid bin or claim code' });
 });
 
 app.get('/api/bins', async (request, reply) => {
@@ -249,24 +278,24 @@ app.post<{ Body: { name: string; email: string; password: string } }>('/api/admi
   }
 });
 
-app.post<{ Body: { bin_id: string; claim_code: string; name: string; address: string; latitude?: number | null; longitude?: number | null } }>('/api/admin/bins', async (request, reply) => {
+app.post<{ Body: { bin_id: string; name: string; address: string; latitude?: number | null; longitude?: number | null } }>('/api/admin/bins', async (request, reply) => {
   if (!await requireRole(request, reply, ['superadmin'])) return;
-  const binId = request.body.bin_id.trim();
-  const claimCode = request.body.claim_code.trim();
-  const name = request.body.name?.trim();
-  const address = request.body.address?.trim();
-  const latitude = request.body.latitude ?? null;
-  const longitude = request.body.longitude ?? null;
-  if (!binId || !claimCode || !name || !address) return reply.code(400).send({ error: 'bin ID, name, address, and claim code are required' });
+  const binId = typeof request.body?.bin_id === 'string' ? request.body.bin_id.trim() : '';
+  const name = typeof request.body?.name === 'string' ? request.body.name.trim() : '';
+  const address = typeof request.body?.address === 'string' ? request.body.address.trim() : '';
+  const latitude = request.body?.latitude ?? null;
+  const longitude = request.body?.longitude ?? null;
+  if (!binId || !name || !address) return reply.code(400).send({ error: 'bin ID, name, and address are required' });
   if ((latitude === null) !== (longitude === null)) return reply.code(400).send({ error: 'enter both coordinates or leave both blank' });
   if (latitude !== null && (!Number.isFinite(latitude) || latitude < -90 || latitude > 90)) return reply.code(400).send({ error: 'latitude must be between -90 and 90' });
   if (longitude !== null && (!Number.isFinite(longitude) || longitude < -180 || longitude > 180)) return reply.code(400).send({ error: 'longitude must be between -180 and 180' });
+  const claimCode = generateClaimCode();
   try {
-    await db.insert(bins).values({ binId, name, address, claimCode, latitude, longitude });
+    await db.insert(bins).values({ binId, name, address, claimCode: hashClaimCode(claimCode), latitude, longitude });
   } catch {
     return reply.code(409).send({ error: 'bin already registered' });
   }
-  return { ok: true, bin_id: binId };
+  return { ok: true, bin_id: binId, claim_code: claimCode };
 });
 
 app.listen({ port, host: '0.0.0.0' }).catch(error => { app.log.error(error); process.exit(1); });

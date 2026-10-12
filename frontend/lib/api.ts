@@ -6,7 +6,7 @@ export type OptimizedRoute = { stops: RouteStop[]; origin_latitude: number; orig
 export type AppUser = { id: string; name: string; email: string; role: Role; created_at?: string }
 export type Session = { user: AppUser }
 export type CollectorInput = { name: string; email: string; password: string }
-export type RegisterBinInput = { bin_id: string; claim_code: string; name: string; address: string; latitude: number | null; longitude: number | null }
+export type RegisterBinInput = { bin_id: string; name: string; address: string; latitude: number | null; longitude: number | null }
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { credentials: 'include', ...init, headers: { ...(init?.body ? { 'content-type': 'application/json' } : {}), ...(init?.headers || {}) } })
@@ -29,7 +29,7 @@ export const api = {
   dispatch: () => request<Dispatch[]>('/api/dispatch'),
   optimizedRoute: () => request<OptimizedRoute>('/api/routes/optimized'),
   claimBin: (bin_id: string, claim_code: string) => request<{ ok: true }>('/api/bins/claim', { method: 'POST', body: JSON.stringify({ bin_id, claim_code }) }),
-  registerBin: (input: RegisterBinInput) => request<{ ok: true; bin_id: string }>('/api/admin/bins', { method: 'POST', body: JSON.stringify(input) }),
+  registerBin: (input: RegisterBinInput) => request<{ ok: true; bin_id: string; claim_code: string }>('/api/admin/bins', { method: 'POST', body: JSON.stringify(input) }),
   requestCollection: (bin_id: string) => request<{ ok: true; bin_id: string }>(`/api/bins/${encodeURIComponent(bin_id)}/request-collection`, { method: 'POST' }),
   closeDispatch: (id: number) => request<{ ok: true }>(`/api/dispatch/${id}/close`, { method: 'POST' }),
   users: () => request<AppUser[]>('/api/admin/users'),

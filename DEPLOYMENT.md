@@ -57,8 +57,8 @@ The API runs pending Drizzle migrations before opening its port. A Dokploy deplo
 
 ## Register bins and manage collections
 
-1. A superadmin opens **Bins** and selects **Register device**. Enter the device ID, a claim code to share with its owner, a display name, and the bin's street address. Latitude and longitude are optional, but improve route distance estimates.
-2. Give the owner the bin ID and claim code. They sign in, open **Bins**, select **Link a bin**, and enter both values. The bin then appears in their dashboard.
+1. An administrator opens **Bins** and selects **Register device**. Enter the device ID, display name, and street address. Latitude and longitude are optional, but improve route distance estimates. The API generates a random claim code and displays it once after registration; copy it before closing the dialog.
+2. Give the owner the bin ID and claim code. They sign in, open **Bins**, select **Link a bin**, and enter both values. The claim code is stored as a hash and invalidated atomically after its first successful use.
 3. A customer can select **Request collection** on a linked bin. High fill readings also create collection tasks automatically.
 4. Collectors and superadmins open **Dispatch**, review the recommended stop order, and select **Start route in Google Maps** to navigate the run. After pickup, select **Mark collected** on that task. New device readings continue to update the bin's actual fill level.
 

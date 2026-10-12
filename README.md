@@ -11,12 +11,12 @@ The current production structure is `api/`, `ai-service/`, `firmware/`, and the 
    `SSID|PASSWORD|BIN-01|https://smartbin.maxkabechani.dev`
 3. A superadmin registers the device in the administration screen.
 4. The ESP32 measures the bin fill level and posts telemetry to the VPS.
-5. The customer creates an account and links the bin with its claim code.
+5. An administrator gives the owner the one-time claim code shown when registering the bin; the customer creates an account and links it.
 6. The customer sees their own readings and collection requests; collectors see fleet operations.
 
 ## Roles
 
-- `customer`: links a registered bin with its claim code and requests collection for owned bins.
+- `customer`: links a registered bin with its one-time claim code and requests collection for owned bins.
 - `collector`: views fleet telemetry, starts collection routes, and closes tasks after pickup. Collectors cannot register or link bins.
 - `superadmin` (Administrator in the dashboard): registers devices and manages user roles.
 
