@@ -59,6 +59,14 @@ app.route({ method: ['GET', 'POST'], url: '/api/auth/*', async handler(request, 
   const url = new URL(request.url, `${process.env.AUTH_URL ?? 'http://localhost:8000'}`);
   const req = new Request(url, { method: request.method, headers: fromNodeHeaders(request.headers), ...(request.body ? { body: JSON.stringify(request.body) } : {}) });
   const response = await auth.handler(req);
+  const authBody = request.body as { email?: unknown } | undefined;
+  const signupEmail = request.method === 'POST' && url.pathname === '/api/auth/sign-up/email' && typeof authBody?.email === 'string'
+    ? authBody.email.trim().toLowerCase()
+    : '';
+  const signupRole = signupEmail ? configuredRole(signupEmail) : null;
+  if (response.ok && signupEmail && signupRole) {
+    await db.update(user).set({ role: signupRole }).where(eq(user.email, signupEmail));
+  }
   reply.status(response.status); response.headers.forEach((value, key) => reply.header(key, value));
   return reply.send(response.body ? await response.text() : null);
 }});
@@ -66,8 +74,7 @@ app.route({ method: ['GET', 'POST'], url: '/api/auth/*', async handler(request, 
 async function requireUser(request: { headers: Record<string, string | string[] | undefined> }, reply: { code: (status: number) => { send: (body: unknown) => unknown } }): Promise<any> {
   const session = await auth.api.getSession({ headers: fromNodeHeaders(request.headers) });
   if (!session) return reply.code(401).send({ error: 'authentication required' });
-  const role = configuredRole(session.user.email) ?? (await db.select({ role: user.role }).from(user).where(eq(user.id, session.user.id)).limit(1))[0]?.role ?? 'customer';
-  if (role !== (session.user as { role?: string }).role) await db.update(user).set({ role }).where(eq(user.id, session.user.id));
+  const role = (await db.select({ role: user.role }).from(user).where(eq(user.id, session.user.id)).limit(1))[0]?.role ?? 'customer';
   return { ...session, user: { ...session.user, role } };
 }
 
@@ -213,10 +220,11 @@ app.get('/api/admin/users', async (request, reply) => {
 app.patch<{ Params: { id: string }; Body: { role: Role } }>('/api/admin/users/:id/role', async (request, reply) => {
   const session = await requireRole(request, reply, ['superadmin']); if (!session) return;
   const roles: Role[] = ['customer', 'collector', 'superadmin'];
-  if (!roles.includes(request.body.role)) return reply.code(400).send({ error: 'invalid role' });
+  if (!request.body || !roles.includes(request.body.role)) return reply.code(400).send({ error: 'invalid role' });
   if (request.params.id === session.user.id) return reply.code(400).send({ error: 'you cannot change your own role' });
-  await db.update(user).set({ role: request.body.role }).where(eq(user.id, request.params.id));
-  return { ok: true };
+  const updated = await db.update(user).set({ role: request.body.role }).where(eq(user.id, request.params.id)).returning({ id: user.id });
+  if (!updated.length) return reply.code(404).send({ error: 'user not found' });
+  return { ok: true, user_id: updated[0].id, role: request.body.role };
 });
 
 app.post<{ Body: { name: string; email: string; password: string } }>('/api/admin/collectors', async (request, reply) => {

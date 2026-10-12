@@ -16,11 +16,11 @@ The current production structure is `api/`, `ai-service/`, `firmware/`, and the 
 
 ## Roles
 
-- `customer`: links owned bins and views their telemetry and collection requests.
-- `collector`: views fleet telemetry and closes collection tasks after pickup.
-- `superadmin`: manages users, roles, and device registration.
+- `customer`: links a registered bin with its claim code and requests collection for owned bins.
+- `collector`: views fleet telemetry, starts collection routes, and closes tasks after pickup. Collectors cannot register or link bins.
+- `superadmin` (Administrator in the dashboard): registers devices and manages user roles.
 
-New accounts are customers by default. Set `SUPERADMIN_EMAILS` and `COLLECTOR_EMAILS` in the API environment to bootstrap staff roles.
+New accounts are customers by default. `SUPERADMIN_EMAILS` and `COLLECTOR_EMAILS` assign initial staff roles at signup; after that, administrators manage persistent roles from Administration.
 
 ## Wiring assumptions
 

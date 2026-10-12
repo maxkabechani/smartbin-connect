@@ -17,7 +17,7 @@ cp ai-service/.env.example ai-service/.env
 
 Set a long `BETTER_AUTH_SECRET`, a private `API_KEY`, the public `AUTH_URL`, and optional Hugging Face values. Do not commit either `.env` file.
 
-Set `SUPERADMIN_EMAILS` to the email address that should receive platform control and `COLLECTOR_EMAILS` to the addresses used by field staff. All other new accounts are customers. Keep `SEED_INITIAL_DATA=false` in production; the seed is only for a fresh classroom installation.
+Set `SUPERADMIN_EMAILS` and `COLLECTOR_EMAILS` to assign the initial roles when those accounts sign up. All other new accounts are customers. After signup, administrators manage persistent roles in the Administration screen. Keep `SEED_INITIAL_DATA=false` in production; the seed is only for a fresh classroom installation.
 
 Create the containers:
 
@@ -31,26 +31,28 @@ docker compose up -d --build api ai-service
 
 Dokploy should expose the Next.js frontend at `https://smartbin.maxkabechani.dev` on container port `3000`. Set the frontend `API_INTERNAL_URL` to the private backend service URL. Keep PostgreSQL and the AI service private to the Docker network.
 
+The API runs pending Drizzle migrations before opening its port. A Dokploy deploy that starts the new API image applies committed migrations automatically; keep the PostgreSQL volume attached and check the API logs and health check after deployment.
+
 ## Role flows
 
 ### Customer
 
 1. Customer creates an account at `https://smartbin.maxkabechani.dev`.
 2. The customer signs in through Better Auth.
-3. The customer enters the bin ID and the claim code supplied with the bin.
+3. The customer enters the registered bin ID and claim code supplied by an administrator.
 4. The API links that bin to the authenticated Better Auth user.
 5. The customer sees only linked bins and their collection requests.
 
 ### Collector
 
-1. A superadmin assigns the `collector` role to the staff account.
+1. An administrator creates a collector account or assigns the `collector` role in Administration.
 2. The collector sees the full registered fleet and open dispatch queue.
-3. The collector marks a task collected after the truck completes the pickup.
+3. The collector can start a route and mark a task collected after pickup; bin registration is restricted to administrators.
 
 ### Superadmin
 
-1. The superadmin signs in with an address listed in `SUPERADMIN_EMAILS`.
-2. The administration screen manages customer, collector, and superadmin roles.
+1. The initial administrator signs up with an address listed in `SUPERADMIN_EMAILS`.
+2. The administration screen manages customer, collector, and administrator roles.
 3. The administration screen registers bins and issues their claim codes before devices connect.
 
 ## Register bins and manage collections
