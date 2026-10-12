@@ -103,6 +103,10 @@ const fallbackBinLocations: Record<string, { latitude: number; longitude: number
   'BIN-04': { latitude: -15.424, longitude: 28.287 },
 };
 
+const fallbackBinNames: Record<string, string> = {
+  'BIN-01': 'Main entrance', 'BIN-02': 'Cafeteria', 'BIN-03': 'Workshop', 'BIN-04': 'Reception',
+};
+
 async function predict(fill: number, binId: string) {
   try {
     const response = await fetch(`${aiUrl}/predict`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ bin_id: binId, fill_level: fill }) });
@@ -151,7 +155,8 @@ app.get('/api/bins', async (request, reply) => {
   for (const bin of owned) {
     const latest = await db.select().from(readings).where(eq(readings.binId, bin.binId)).orderBy(desc(readings.createdAt)).limit(1);
     const owner = bin.ownerUserId ? await db.select({ name: user.name, email: user.email }).from(user).where(eq(user.id, bin.ownerUserId)).limit(1) : [];
-    result.push({ bin_id: bin.binId, fill_level: latest[0]?.fillLevel ?? 0, lid_open: latest[0]?.lidOpen ?? false, wifi_rssi: latest[0]?.wifiRssi ?? 0, last_seen: latest[0]?.createdAt?.toISOString() ?? null, priority: fallback(latest[0]?.fillLevel ?? 0).priority, owner_name: owner[0]?.name ?? null, owner_email: owner[0]?.email ?? null });
+    const fallbackLocation = fallbackBinLocations[bin.binId];
+    result.push({ bin_id: bin.binId, name: bin.name || fallbackBinNames[bin.binId] || bin.binId, address: bin.address, latitude: bin.latitude ?? fallbackLocation?.latitude ?? null, longitude: bin.longitude ?? fallbackLocation?.longitude ?? null, fill_level: latest[0]?.fillLevel ?? 0, lid_open: latest[0]?.lidOpen ?? false, wifi_rssi: latest[0]?.wifiRssi ?? 0, last_seen: latest[0]?.createdAt?.toISOString() ?? null, priority: fallback(latest[0]?.fillLevel ?? 0).priority, owner_name: owner[0]?.name ?? null, owner_email: owner[0]?.email ?? null });
   }
   return result.sort((a,b) => b.fill_level-a.fill_level);
 });
@@ -159,25 +164,40 @@ app.get('/api/bins', async (request, reply) => {
 app.get('/api/dispatch', async (request, reply) => {
   const session = await requireUser(request, reply); if (!session) return;
   const filter = session.user.role === 'customer' ? and(eq(dispatchTasks.status, 'open'), eq(bins.ownerUserId, session.user.id)) : eq(dispatchTasks.status, 'open');
-  return db.select({ id: dispatchTasks.id, bin_id: bins.binId, priority: dispatchTasks.priority, reason: dispatchTasks.reason, status: dispatchTasks.status, owner_name: user.name, owner_email: user.email }).from(dispatchTasks).innerJoin(bins, eq(dispatchTasks.binId, bins.binId)).leftJoin(user, eq(bins.ownerUserId, user.id)).where(filter).orderBy(desc(dispatchTasks.createdAt));
+  return db.select({ id: dispatchTasks.id, bin_id: bins.binId, bin_name: bins.name, address: bins.address, priority: dispatchTasks.priority, reason: dispatchTasks.reason, status: dispatchTasks.status, owner_name: user.name, owner_email: user.email }).from(dispatchTasks).innerJoin(bins, eq(dispatchTasks.binId, bins.binId)).leftJoin(user, eq(bins.ownerUserId, user.id)).where(filter).orderBy(desc(dispatchTasks.createdAt));
+});
+
+app.post<{ Params: { bin_id: string } }>('/api/bins/:bin_id/request-collection', async (request, reply) => {
+  const session = await requireRole(request, reply, ['customer']); if (!session) return;
+  const binId = request.params.bin_id;
+  const owned = await db.select({ binId: bins.binId }).from(bins).where(and(eq(bins.binId, binId), eq(bins.ownerUserId, session.user.id))).limit(1);
+  if (!owned[0]) return reply.code(404).send({ error: 'bin not found in your account' });
+  const openTask = await db.select({ id: dispatchTasks.id }).from(dispatchTasks).where(and(eq(dispatchTasks.binId, binId), eq(dispatchTasks.status, 'open'))).limit(1);
+  if (openTask[0]) return reply.code(409).send({ error: 'A collection request is already open for this bin.' });
+  await db.insert(dispatchTasks).values({ binId, priority: 'high', status: 'open', reason: 'Customer requested collection', createdAt: new Date() });
+  return { ok: true, bin_id: binId };
 });
 
 app.get('/api/routes/optimized', async (request, reply) => {
   if (!await requireRole(request, reply, ['collector', 'superadmin'])) return;
-  const tasks = await db.select({ bin_id: bins.binId, priority: dispatchTasks.priority, reason: dispatchTasks.reason, owner_name: user.name, latitude: bins.latitude, longitude: bins.longitude }).from(dispatchTasks).innerJoin(bins, eq(dispatchTasks.binId, bins.binId)).leftJoin(user, eq(bins.ownerUserId, user.id)).where(eq(dispatchTasks.status, 'open')).orderBy(desc(dispatchTasks.createdAt));
+  const tasks = await db.select({ bin_id: bins.binId, bin_name: bins.name, address: bins.address, priority: dispatchTasks.priority, reason: dispatchTasks.reason, owner_name: user.name, latitude: bins.latitude, longitude: bins.longitude }).from(dispatchTasks).innerJoin(bins, eq(dispatchTasks.binId, bins.binId)).leftJoin(user, eq(bins.ownerUserId, user.id)).where(eq(dispatchTasks.status, 'open')).orderBy(desc(dispatchTasks.createdAt));
   const stops = [];
   for (const task of tasks) {
     const latest = await db.select({ fillLevel: readings.fillLevel }).from(readings).where(eq(readings.binId, task.bin_id)).orderBy(desc(readings.createdAt)).limit(1);
     const fallbackLocation = fallbackBinLocations[task.bin_id];
-    stops.push({ bin_id: task.bin_id, fill_level: latest[0]?.fillLevel ?? 0, priority: task.priority, reason: task.reason, owner_name: task.owner_name, latitude: task.latitude ?? fallbackLocation?.latitude ?? null, longitude: task.longitude ?? fallbackLocation?.longitude ?? null });
+    stops.push({ bin_id: task.bin_id, bin_name: task.bin_name || fallbackBinNames[task.bin_id] || task.bin_id, address: task.address, fill_level: latest[0]?.fillLevel ?? 0, priority: task.priority, reason: task.reason, owner_name: task.owner_name, latitude: task.latitude ?? fallbackLocation?.latitude ?? null, longitude: task.longitude ?? fallbackLocation?.longitude ?? null });
   }
-  if (!stops.length) return { stops: [], distance_to_first_km: 0, between_stops_distance_km: 0, outbound_distance_km: 0, return_distance_km: 0, total_distance_km: 0, estimated_minutes: 0, estimated_savings_percent: 0, algorithm: 'priority-weighted nearest neighbour', unlocated_stops: 0 };
+  const routeOrigin = { origin_latitude: routeDepot.latitude, origin_longitude: routeDepot.longitude };
+  if (!stops.length) return { ...routeOrigin, stops: [], distance_to_first_km: 0, between_stops_distance_km: 0, outbound_distance_km: 0, return_distance_km: 0, total_distance_km: 0, estimated_minutes: 0, estimated_savings_percent: 0, algorithm: 'priority-weighted nearest neighbour', unlocated_stops: 0 };
   try {
     const response = await fetch(`${aiUrl}/optimize-route`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ stops, start_latitude: routeDepot.latitude, start_longitude: routeDepot.longitude, return_to_start: true }) });
-    if (response.ok) return await response.json();
+    if (response.ok) {
+      const optimized = await response.json() as { stops: Array<Record<string, unknown>>; [key: string]: unknown };
+      return { ...routeOrigin, ...optimized, stops: optimized.stops.map((stop) => { const binId = String(stop.bin_id); const task = tasks.find((item) => item.bin_id === binId); return { ...stop, bin_name: task?.bin_name || fallbackBinNames[binId] || binId, address: task?.address ?? '' }; }) };
+    }
   } catch (error) { app.log.warn({ error }, 'AI route optimizer unavailable; using priority order'); }
   const orderedStops = stops.sort((a, b) => (b.fill_level - a.fill_level));
-  return { stops: orderedStops.map((stop, index) => ({ ...stop, sequence: index + 1, distance_from_previous_km: 0, location_available: stop.latitude !== null && stop.longitude !== null })), distance_to_first_km: 0, between_stops_distance_km: 0, outbound_distance_km: 0, return_distance_km: 0, total_distance_km: 0, estimated_minutes: orderedStops.length * 8, estimated_savings_percent: 0, algorithm: 'priority order fallback', unlocated_stops: orderedStops.filter((stop) => stop.latitude === null || stop.longitude === null).length };
+  return { ...routeOrigin, stops: orderedStops.map((stop, index) => ({ ...stop, sequence: index + 1, distance_from_previous_km: 0, location_available: stop.latitude !== null && stop.longitude !== null })), distance_to_first_km: 0, between_stops_distance_km: 0, outbound_distance_km: 0, return_distance_km: 0, total_distance_km: 0, estimated_minutes: orderedStops.length * 8, estimated_savings_percent: 0, algorithm: 'priority order fallback', unlocated_stops: orderedStops.filter((stop) => stop.latitude === null || stop.longitude === null).length };
 });
 app.post<{ Params: { id: string } }>('/api/dispatch/:id/close', async (request, reply) => {
   if (!await requireRole(request, reply, ['collector', 'superadmin'])) return;
@@ -221,13 +241,20 @@ app.post<{ Body: { name: string; email: string; password: string } }>('/api/admi
   }
 });
 
-app.post<{ Body: { bin_id: string; claim_code: string } }>('/api/admin/bins', async (request, reply) => {
+app.post<{ Body: { bin_id: string; claim_code: string; name: string; address: string; latitude?: number | null; longitude?: number | null } }>('/api/admin/bins', async (request, reply) => {
   if (!await requireRole(request, reply, ['superadmin'])) return;
   const binId = request.body.bin_id.trim();
   const claimCode = request.body.claim_code.trim();
-  if (!binId || !claimCode) return reply.code(400).send({ error: 'bin id and claim code are required' });
+  const name = request.body.name?.trim();
+  const address = request.body.address?.trim();
+  const latitude = request.body.latitude ?? null;
+  const longitude = request.body.longitude ?? null;
+  if (!binId || !claimCode || !name || !address) return reply.code(400).send({ error: 'bin ID, name, address, and claim code are required' });
+  if ((latitude === null) !== (longitude === null)) return reply.code(400).send({ error: 'enter both coordinates or leave both blank' });
+  if (latitude !== null && (!Number.isFinite(latitude) || latitude < -90 || latitude > 90)) return reply.code(400).send({ error: 'latitude must be between -90 and 90' });
+  if (longitude !== null && (!Number.isFinite(longitude) || longitude < -180 || longitude > 180)) return reply.code(400).send({ error: 'longitude must be between -180 and 180' });
   try {
-    await db.insert(bins).values({ binId, claimCode });
+    await db.insert(bins).values({ binId, name, address, claimCode, latitude, longitude });
   } catch {
     return reply.code(409).send({ error: 'bin already registered' });
   }

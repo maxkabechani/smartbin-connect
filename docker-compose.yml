@@ -17,6 +17,8 @@ services:
     environment:
       DATABASE_URL: postgresql://smartbin:change-this-password@postgres:5432/smartbin
       AI_SERVICE_URL: http://ai-service:9000
+      NO_PROXY: "${NO_PROXY:-localhost,127.0.0.1},api,postgres,ai-service"
+      no_proxy: "${NO_PROXY:-localhost,127.0.0.1},api,postgres,ai-service"
     ports: ["8000:8000"]
     depends_on:
       postgres: { condition: service_healthy }
@@ -26,6 +28,8 @@ services:
     build: ./frontend
     environment:
       API_INTERNAL_URL: http://api:8000
+      NO_PROXY: "${NO_PROXY:-localhost,127.0.0.1},api,postgres,ai-service"
+      no_proxy: "${NO_PROXY:-localhost,127.0.0.1},api,postgres,ai-service"
     ports: ["3000:3000"]
     depends_on:
       - api
