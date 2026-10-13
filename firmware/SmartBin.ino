@@ -5,20 +5,16 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
-#include <ESP32Servo.h>
 
 // Change these pins to match your kit.
-const int TRIG_PIN = 5, ECHO_PIN = 18, SERVO_PIN = 19;
+const int TRIG_PIN = 5, ECHO_PIN = 18;
 const int LED_GREEN = 25, LED_YELLOW = 26, LED_RED = 27;
-const int BUZZER_PIN = 14, BUTTON_PIN = 13;
 const float EMPTY_DISTANCE_CM = 35.0, FULL_DISTANCE_CM = 5.0;
 const unsigned long TELEMETRY_INTERVAL_MS = 30000;
 const char *API_KEY = "change-me";
 
 Preferences prefs;
-Servo lidServo;
 String wifiSsid, wifiPassword, binId = "BIN-01", apiUrl;
-bool lidOpen = false, lastCritical = false;
 unsigned long lastTelemetry = 0;
 
 #define SERVICE_UUID "d5f2b000-7e4a-4a5b-8a6b-000000000001"
@@ -70,30 +66,25 @@ float readFillPercent() {
 
 void updateIndicators(float fill) {
   digitalWrite(LED_GREEN, fill>=0 && fill<50); digitalWrite(LED_YELLOW, fill>=50 && fill<80); digitalWrite(LED_RED, fill>=80);
-  bool critical=fill>=90; if(critical && !lastCritical){tone(BUZZER_PIN,2200,500);} lastCritical=critical;
 }
-
-void setLid(bool open) { lidOpen=open; lidServo.write(open?100:10); }
 
 void sendTelemetry(float fill) {
   if(WiFi.status()!=WL_CONNECTED || apiUrl.isEmpty() || fill<0) return;
   HTTPClient http; http.begin(apiUrl + "/api/telemetry"); http.addHeader("Content-Type","application/json");
-  String body="{\"api_key\":\""+String(API_KEY)+"\",\"bin_id\":\""+binId+"\",\"fill_level\":"+String(fill,1)+",\"lid_open\":"+(lidOpen?"true":"false")+",\"wifi_rssi\":"+String(WiFi.RSSI())+"}";
+  String body="{\"api_key\":\""+String(API_KEY)+"\",\"bin_id\":\""+binId+"\",\"fill_level\":"+String(fill,1)+",\"wifi_rssi\":"+String(WiFi.RSSI())+"}";
   int code=http.POST(body); Serial.printf("Telemetry: %d\n",code); http.end();
 }
 
 void setup() {
-  Serial.begin(115200); pinMode(TRIG_PIN,OUTPUT); pinMode(ECHO_PIN,INPUT); pinMode(BUTTON_PIN,INPUT_PULLUP);
-  pinMode(LED_GREEN,OUTPUT); pinMode(LED_YELLOW,OUTPUT); pinMode(LED_RED,OUTPUT); pinMode(BUZZER_PIN,OUTPUT);
-  lidServo.attach(SERVO_PIN); setLid(false); prefs.begin("smartbin",false);
+  Serial.begin(115200); pinMode(TRIG_PIN,OUTPUT); pinMode(ECHO_PIN,INPUT);
+  pinMode(LED_GREEN,OUTPUT); pinMode(LED_YELLOW,OUTPUT); pinMode(LED_RED,OUTPUT);
+  prefs.begin("smartbin",false);
   wifiSsid=prefs.getString("ssid",""); wifiPassword=prefs.getString("pass",""); binId=prefs.getString("bin","BIN-01"); apiUrl=prefs.getString("api","");
   startBluetooth(); connectWifi();
 }
 
 void loop() {
   float fill=readFillPercent(); updateIndicators(fill);
-  if(digitalRead(BUTTON_PIN)==LOW){setLid(true); delay(1500);}
-  if(lidOpen && digitalRead(BUTTON_PIN)==HIGH){delay(1200); setLid(false);}
   if(millis()-lastTelemetry>TELEMETRY_INTERVAL_MS){sendTelemetry(fill); lastTelemetry=millis();}
   delay(500);
 }

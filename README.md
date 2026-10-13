@@ -28,14 +28,11 @@ New accounts are customers by default. `SUPERADMIN_EMAILS` and `COLLECTOR_EMAILS
 |---|---:|---|
 | Ultrasonic TRIG | GPIO 5 | Output |
 | Ultrasonic ECHO | GPIO 18 | Use a voltage divider if the module outputs 5 V |
-| Lid servo signal | GPIO 19 | Power the servo from a separate 5 V rail and share ground |
 | Green LED | GPIO 25 | Use a resistor |
 | Yellow LED | GPIO 26 | Use a resistor |
 | Red LED | GPIO 27 | Use a resistor |
-| Buzzer | GPIO 14 | Use a transistor driver for a larger buzzer |
-| Manual lid button | GPIO 13 | Button to ground, internal pull-up enabled |
 
-If your kit has different parts, change the constants at the top of `firmware/SmartBin.ino`.
+The LEDs indicate fill levels: green below 50%, yellow from 50% to below 80%, and red at 80% or above. This build has no lid actuator or buzzer. If your kit has different parts, change the constants at the top of `firmware/SmartBin.ino`.
 
 ## Deployment
 
