@@ -1,0 +1,40 @@
+name: ESP32 firmware
+
+on:
+  push:
+    paths:
+      - "firmware/SmartBin/**"
+      - ".github/workflows/firmware.yml"
+  pull_request:
+    paths:
+      - "firmware/SmartBin/**"
+      - ".github/workflows/firmware.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+
+      - name: Install ESP32 board core
+        run: |
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@3.0.7
+
+      - name: Install ESP32Servo library
+        run: arduino-cli lib install ESP32Servo@3.0.6
+
+      - name: Compile for ESP32 Dev Module
+        run: |
+          cp firmware/SmartBin/secrets.example.h firmware/SmartBin/secrets.h
+          arduino-cli compile --fqbn esp32:esp32:esp32 firmware/SmartBin

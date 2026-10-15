@@ -66,13 +66,7 @@ The API repeats every permission check server-side. The frontend only changes th
 
 ## ESP32 configuration
 
-Use the Bluetooth configuration characteristic with:
-
-```text
-WIFI_NAME|WIFI_PASSWORD|BIN-01|https://smartbin.maxkabechani.dev
-```
-
-The firmware sends telemetry to `/api/telemetry` using the device API key. Devices must be registered before telemetry is accepted. Customer sessions are never stored on the ESP32.
+The presentation firmware uses compile-time Wi-Fi settings and the backend `API_KEY` in a local `firmware/SmartBin/secrets.h` file. Copy `secrets.example.h` to create it, set the Wi-Fi values and the same API key configured in Dokploy, and do not commit the real file. The public website address routes `/api/telemetry` to the private backend service. Register the bin ID before sending telemetry. Customer sessions are never stored on the ESP32.
 
 ## Hugging Face model
 

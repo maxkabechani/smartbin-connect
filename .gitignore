@@ -23,4 +23,5 @@ ppt_build/
 server/
 
 ai-service/model.joblib
+firmware/SmartBin/secrets.h
 

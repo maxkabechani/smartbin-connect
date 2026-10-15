@@ -1,18 +1,16 @@
 # SmartBin Connect
 
-An ESP32 smart bin prototype with Bluetooth provisioning, Wi-Fi telemetry, a Fastify and TypeScript API, PostgreSQL with Drizzle ORM, Better Auth customer accounts, a Python AI service, and Hugging Face model hosting.
+An ESP32 smart bin prototype with Wi-Fi telemetry, a Fastify and TypeScript API, PostgreSQL with Drizzle ORM, Better Auth customer accounts, a Python AI service, and Hugging Face model hosting.
 
 The current production structure is `api/`, `ai-service/`, `firmware/`, and the root `docker-compose.yml`. See `DEPLOYMENT.md` for VPS setup.
 
 ## Live product flow
 
-1. Power the ESP32.
-2. Connect to its Bluetooth service and write Wi-Fi settings in this format:
-   `SSID|PASSWORD|BIN-01|https://smartbin.maxkabechani.dev`
-3. A superadmin registers the device in the administration screen.
-4. The ESP32 measures the bin fill level and posts telemetry to the VPS.
-5. An administrator gives the owner the one-time claim code shown when registering the bin; the customer creates an account and links it.
-6. The customer sees their own readings and collection requests; collectors see fleet operations.
+1. An administrator registers `BIN-01` in the dashboard.
+2. Flash `firmware/SmartBin/SmartBin.ino` to the ESP32 over USB using Arduino IDE.
+3. The ESP32 connects to the configured Wi-Fi, measures fill level, and posts telemetry to the VPS.
+4. An administrator gives the owner the one-time claim code shown when registering the bin; the customer creates an account and links it.
+5. The customer sees their own readings and collection requests; collectors see fleet operations.
 
 ## Roles
 
@@ -31,8 +29,16 @@ New accounts are customers by default. `SUPERADMIN_EMAILS` and `COLLECTOR_EMAILS
 | Green LED | GPIO 25 | Use a resistor |
 | Yellow LED | GPIO 26 | Use a resistor |
 | Red LED | GPIO 27 | Use a resistor |
+| Push button | GPIO 13 to GND | Uses the ESP32 internal pull-up |
+| Servo signal | GPIO 19 | Power the servo from 5 V with a shared GND |
 
-The LEDs indicate fill levels: green below 50%, yellow from 50% to below 80%, and red at 80% or above. This build has no lid actuator or buzzer. If your kit has different parts, change the constants at the top of `firmware/SmartBin.ino`.
+The LEDs indicate fill levels: green below 50%, yellow from 50% to below 80%, and red at 80% or above. The button toggles the servo flap open or closed at any fill level; it stays where it is until pressed again, so it can be left open while emptying. The servo needs a 5 V supply with its ground connected to ESP32 GND. Adjust its closed and open angles to fit the flap.
+
+## Firmware API setup
+
+The ESP32 sends `POST https://smartbin.maxkabechani.dev/api/telemetry`. The website's `/api` route forwards the request to the backend inside Dokploy's private network; the ESP32 cannot reach the private Docker address directly. A matching `API_KEY` is required for the deployed backend to accept readings.
+
+On the borrowed computer, install the Espressif ESP32 board package and `ESP32Servo`, copy `secrets.example.h` to `secrets.h`, enter the Wi-Fi settings and an API key matching Dokploy, then open the sketch, select the matching board and USB port, and upload. Keep `secrets.h` private; the example file is safe to include with the source.
 
 ## Deployment
 
