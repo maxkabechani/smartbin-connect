@@ -36,9 +36,9 @@ The LEDs indicate fill levels: green below 50%, yellow from 50% to below 80%, an
 
 ## Firmware API setup
 
-The ESP32 sends `POST https://smartbin.maxkabechani.dev/api/telemetry`. The website's `/api` route forwards the request to the backend inside Dokploy's private network; the ESP32 cannot reach the private Docker address directly. A matching `API_KEY` is required for the deployed backend to accept readings.
+The ESP32 sends `POST https://smartbin.maxkabechani.dev/api/telemetry`. The website's `/api` route forwards the request to the backend inside Dokploy's private network; the ESP32 cannot reach the private Docker address directly. The classroom demo endpoint accepts readings for registered bins without an API key.
 
-Install the Espressif ESP32 board package and `ESP32Servo`, then open `firmware/SmartBin/SmartBin.ino`. Enter the Wi-Fi name, Wi-Fi password, and API key in the quoted string values near the top. Use a 2.4 GHz Wi-Fi network. The API key must match the value in Dokploy, and `BIN-01` must be registered in the dashboard. Open Serial Monitor at 115200 baud to see Wi-Fi connection and telemetry status. Keep your real credentials local; do not commit them to the public repository.
+Install the Espressif ESP32 board package and `ESP32Servo`, then open `firmware/SmartBin/SmartBin.ino`. Enter the Wi-Fi name and password in the quoted string values near the top. Use a 2.4 GHz Wi-Fi network and register `BIN-01` in the dashboard before sending readings. Open Serial Monitor at 115200 baud to see Wi-Fi connection and telemetry status. Keep your real credentials local; do not commit them to the public repository.
 
 ## Deployment
 
