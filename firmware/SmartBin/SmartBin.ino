@@ -51,6 +51,10 @@ void startWiFi() {
 }
 
 void sendTelemetry(float fillPercent) {
+  if (lidOpen) {
+    Serial.println("[Web] Skipped: bin lid is open.");
+    return;
+  }
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("[Web] Skipped: Wi-Fi is not connected.");
     return;
