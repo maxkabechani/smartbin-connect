@@ -2,11 +2,12 @@
 
 ## Upload
 
-1. Install Arduino IDE, the **esp32 by Espressif Systems** board package, and the **ESP32Servo** library on the computer.
-2. Copy `secrets.example.h` to `secrets.h` in this folder and fill in the Wi-Fi name, Wi-Fi password, and backend API key. Open `SmartBin.ino`, choose **ESP32 Dev Module** (or the matching ESP32 board) and USB port, then click **Upload**.
-3. The sketch connects to the configured 2.4 GHz Wi-Fi and sends readings to `/api/telemetry`. The API key in `secrets.h` must match the value in Dokploy. Register `BIN-01` in the dashboard before using the device.
+1. Install Arduino IDE, the **esp32 by Espressif Systems** board package, and the **ESP32Servo** library.
+2. Open `SmartBin.ino` and replace the Wi-Fi name, Wi-Fi password, and Dokploy API key in the quoted string values near the top. Use a 2.4 GHz Wi-Fi network. The API key must match the `API_KEY` value in Dokploy.
+3. Register `BIN-01` in the dashboard, choose **ESP32 Dev Module** (or the matching ESP32 board) and its USB port, then upload.
+4. Open Serial Monitor at **115200 baud**. It prints the Wi-Fi connection state, IP address, HTTP response, and request errors.
 
-The push button toggles the flap open or closed at any fill level. The local `secrets.h` contains Wi-Fi credentials and an API key; do not upload or commit that file. The example file contains placeholders and is safe to share.
+The sketch sends an initial reading after Wi-Fi connects, then sends telemetry every 30 seconds. Pressing the button toggles the flap and sends a reading. Keep real credentials local; do not commit the edited sketch to the public repository.
 
 ## Pins
 
