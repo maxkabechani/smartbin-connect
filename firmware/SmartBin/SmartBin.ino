@@ -6,7 +6,6 @@
 // ESP32 boards connect to 2.4 GHz Wi-Fi networks.
 const char *WIFI_SSID = "YOUR_WIFI_NAME";
 const char *WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
-const char *API_KEY = "YOUR_DOKPLOY_API_KEY";
 
 const char *BIN_ID = "BIN-01";
 const char *API_URL = "https://smartbin.maxkabechani.dev/api/telemetry";
@@ -71,9 +70,7 @@ void sendTelemetry(float fillPercent) {
   }
 
   http.addHeader("Content-Type", "application/json");
-  String body = "{\"api_key\":\"";
-  body += API_KEY;
-  body += "\",\"bin_id\":\"";
+  String body = "{\"bin_id\":\"";
   body += BIN_ID;
   body += "\",\"fill_level\":";
   body += String(fillPercent, 1);
