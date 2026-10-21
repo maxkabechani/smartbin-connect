@@ -13,7 +13,6 @@ import { and, desc, eq, isNotNull, isNull, ne, or } from 'drizzle-orm';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT ?? 8000);
-const apiKey = process.env.API_KEY ?? 'change-me';
 const aiUrl = process.env.AI_SERVICE_URL ?? 'http://ai-service:9000';
 const routeDepot = { latitude: Number(process.env.ROUTE_DEPOT_LATITUDE ?? '-15.401'), longitude: Number(process.env.ROUTE_DEPOT_LONGITUDE ?? '28.275') };
 const claimCodes = new Map(
@@ -54,7 +53,7 @@ await seedInitialData();
 // A claim code is only useful before ownership is assigned, so clear those secrets.
 await db.update(bins).set({ claimCode: '' }).where(and(isNotNull(bins.ownerUserId), ne(bins.claimCode, '')));
 
-type Telemetry = { api_key: string; bin_id: string; fill_level: number; lid_open?: boolean; wifi_rssi?: number };
+type Telemetry = { bin_id: string; fill_level: number; lid_open?: boolean; wifi_rssi?: number };
 const app = Fastify({ logger: true });
 await app.register(cors, { origin: true });
 await app.register(fastifyStatic, { root: path.join(root, '..', 'public'), prefix: '/' });
@@ -138,9 +137,9 @@ async function predict(fill: number, binId: string) {
 }
 
 app.get('/health', async () => ({ ok: true, service: 'smartbin-api' }));
+// Public telemetry endpoint for the classroom demo; accept readings for registered bins.
 app.post<{ Body: Telemetry }>('/api/telemetry', async (request, reply) => {
   const t = request.body;
-  if (t.api_key !== apiKey) return reply.code(401).send({ error: 'invalid api key' });
   if (!t.bin_id || !Number.isFinite(t.fill_level) || t.fill_level < 0 || t.fill_level > 100) return reply.code(400).send({ error: 'invalid telemetry' });
   const created = new Date().toISOString();
   const registered = await db.select({ binId: bins.binId }).from(bins).where(eq(bins.binId, t.bin_id)).limit(1);
