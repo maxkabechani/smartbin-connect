@@ -3,7 +3,7 @@
 ## Upload
 
 1. Install Arduino IDE, the **esp32 by Espressif Systems** board package, and the **ESP32Servo** library.
-2. Open `SmartBin.ino` and replace the Wi-Fi name, Wi-Fi password, and Dokploy API key in the quoted string values near the top. Use a 2.4 GHz Wi-Fi network. The API key must match the `API_KEY` value in Dokploy.
+2. Open `SmartBin.ino` and replace the Wi-Fi name and password in the quoted string values near the top. Use a 2.4 GHz Wi-Fi network. No API key is needed for the classroom demo.
 3. Register `BIN-01` in the dashboard, choose **ESP32 Dev Module** (or the matching ESP32 board) and its USB port, then upload.
 4. Open Serial Monitor at **115200 baud**. It prints the Wi-Fi connection state, IP address, HTTP response, and request errors.
 
