@@ -15,7 +15,7 @@ cp api/.env.example api/.env
 cp ai-service/.env.example ai-service/.env
 ```
 
-Set a long `BETTER_AUTH_SECRET`, a private `API_KEY`, the public `AUTH_URL`, and optional Hugging Face values. Do not commit either `.env` file.
+Set a long `BETTER_AUTH_SECRET`, the public `AUTH_URL`, and optional Hugging Face values. Do not commit either `.env` file.
 
 Set `SUPERADMIN_EMAILS` and `COLLECTOR_EMAILS` to assign the initial roles when those accounts sign up. All other new accounts are customers. After signup, administrators manage persistent roles in the Administration screen. Keep `SEED_INITIAL_DATA=false` in production; the seed is only for a fresh classroom installation.
 
@@ -66,7 +66,7 @@ The API repeats every permission check server-side. The frontend only changes th
 
 ## ESP32 configuration
 
-The presentation firmware uses compile-time Wi-Fi settings and the backend `API_KEY` in a local `firmware/SmartBin/secrets.h` file. Copy `secrets.example.h` to create it, set the Wi-Fi values and the same API key configured in Dokploy, and do not commit the real file. The public website address routes `/api/telemetry` to the private backend service. Register the bin ID before sending telemetry. Customer sessions are never stored on the ESP32.
+The presentation firmware is a single file at `firmware/SmartBin/SmartBin.ino`. Enter the Wi-Fi name and password in the quoted strings near the top. The public website address routes `/api/telemetry` to the private backend service. For the classroom demo, telemetry accepts readings for registered bins without an API key. Register the bin ID before sending telemetry. Customer sessions are never stored on the ESP32.
 
 ## Hugging Face model
 
