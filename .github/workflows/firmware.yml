@@ -35,6 +35,4 @@ jobs:
         run: arduino-cli lib install ESP32Servo@3.0.6
 
       - name: Compile for ESP32 Dev Module
-        run: |
-          cp firmware/SmartBin/secrets.example.h firmware/SmartBin/secrets.h
-          arduino-cli compile --fqbn esp32:esp32:esp32 firmware/SmartBin
+        run: arduino-cli compile --fqbn esp32:esp32:esp32 firmware/SmartBin
